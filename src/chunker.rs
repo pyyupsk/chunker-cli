@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tokio;
 
-const CHUNK_SIZE: usize = 25_684_992; // 24.5MB in bytes
-
 #[derive(Debug)]
 pub struct ChunkResult {
     pub chunks: usize,
@@ -21,17 +19,18 @@ async fn process_chunk_batch(
     name_base: &str,
     ext: &str,
     progress: &indicatif::ProgressBar,
+    chunk_size: usize
 ) -> io::Result<()> {
     let mut tasks = Vec::new();
 
     for i in 0..batch_size {
         let chunk_index = start_chunk + i;
-        let start = chunk_index as u64 * CHUNK_SIZE as u64;
+        let start = chunk_index as u64 * chunk_size as u64;
         if start >= file_size {
             break;
         }
 
-        let end = std::cmp::min(start + CHUNK_SIZE as u64, file_size);
+        let end = std::cmp::min(start + chunk_size as u64, file_size);
         let chunk_name = format!("{}_chunk{}.{}", name_base, chunk_index + 1, ext);
         let chunk_path = output_dir.join(chunk_name);
         
@@ -60,6 +59,7 @@ pub async fn split(
     output_dir: &Path,
     concurrent: usize,
     progress: indicatif::ProgressBar,
+    chunk_size: usize
 ) -> io::Result<ChunkResult> {
     if !source_file.exists() {
         return Err(io::Error::new(io::ErrorKind::NotFound, "Source file does not exist"));
@@ -72,7 +72,7 @@ pub async fn split(
     let name_base = source_file.file_stem().unwrap().to_str().unwrap();
     let ext = source_file.extension().unwrap().to_str().unwrap();
 
-    let num_chunks = ((file_size as f64) / (CHUNK_SIZE as f64)).ceil() as usize;
+    let num_chunks = ((file_size as f64) / (chunk_size as f64)).ceil() as usize;
     progress.set_length(num_chunks as u64);
 
     for i in (0..num_chunks).step_by(concurrent) {
@@ -85,6 +85,7 @@ pub async fn split(
             name_base,
             ext,
             &progress,
+            chunk_size
         ).await?;
     }
 

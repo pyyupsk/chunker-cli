@@ -15,7 +15,8 @@ async fn main() -> std::io::Result<()> {
                 .about("🔪 Split a file into smaller chunks")
                 .arg(Arg::new("source").help("Source file path").required(true))
                 .arg(Arg::new("output").short('o').long("output").help("Output directory for chunks"))
-                .arg(Arg::new("concurrent").short('c').long("concurrent").value_parser(clap::value_parser!(usize)))
+                .arg(Arg::new("concurrent").short('c').long("concurrent").help("Number of concurrent tasks").value_parser(clap::value_parser!(usize)))
+                .arg(Arg::new("chunk_size").short('s').long("chunk-size").help("Custom chunk size in bytes (in binary), 25MB = 26214400").value_parser(clap::value_parser!(usize)))
         )
         .subcommand(
             Command::new("merge")
@@ -37,6 +38,10 @@ async fn main() -> std::io::Result<()> {
                 .get_one::<usize>("concurrent")
                 .copied()
                 .unwrap_or(5);
+            let chunk_size = sub_matches
+                .get_one::<usize>("chunk_size")
+                .copied()
+                .unwrap_or(25690112);
 
             std::fs::create_dir_all(&output_dir)?;
 
@@ -49,7 +54,7 @@ async fn main() -> std::io::Result<()> {
                     .progress_chars("█░░"),
             );
 
-            match chunker::split(&source, &output_dir, concurrent, progress).await {
+            match chunker::split(&source, &output_dir, concurrent, progress, chunk_size).await {
                 Ok(result) => {
                     println!("\n{}\n", "\n✅ Split complete! 🎉".green().bold());
                     println!("  📦 Chunks created: {}", result.chunks);
