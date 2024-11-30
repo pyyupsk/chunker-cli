@@ -1,33 +1,30 @@
 # Chunker CLI
 
-`Chunker CLI` is a fast and efficient tool to split large files into smaller chunks and merge them back together. It leverages concurrency for the splitting operation, allowing for faster processing of large files.
+`Chunker CLI` is a high-performance tool designed to split large files into smaller chunks and merge them back together. It leverages parallel processing for both splitting and merging operations, delivering exceptional performance and resource efficiency.
 
 ## 🚀 Features
 
-- **Split Files**: Divide large files into smaller, manageable chunks.
-- **Merge Chunks**: Reassemble previously split files back into their original form.
-- **Concurrency**: Split files using multiple concurrent tasks to speed up the process.
-- **Custom Chunk Size**: Control the size of the chunks in bytes.
+- **Parallel Split**: Divide large files into smaller chunks using parallel processing
+- **Parallel Merge**: Rapidly reassemble chunks back into the original file
+- **High Performance**: Efficiently splits and merges large files
+- **Resource Efficient**: Uses minimal memory and CPU resources
+- **Custom Chunk Size**: Control the size of chunks in bytes
 
 ## 📦 Installation
 
-To install and use `chunker-cli`, follow these simple steps:
+To install and use `chunker-cli`:
 
-1. Go to the [releases](https://github.com/pyyupsk/chunker-cli/releases) page and download the `chunker-cli` executable.
+1. Go to the [releases](https://github.com/pyyupsk/chunker-cli/releases) page
+2. Download the `chunker-cli` executable
+3. Run it from your terminal:
 
-2. Run the CLI tool in your terminal. For example:
-
-    ```bash
-    chunker-cli split <SOURCE_FILE_PATH> -o <OUTPUT_DIRECTORY>
-    ```
-
-3. That's it! The tool will handle the rest, splitting the file into smaller chunks and merging them back together.
+```bash
+chunker-cli split <SOURCE_FILE_PATH> -o <OUTPUT_DIRECTORY>
+```
 
 ## 🧩 Usage
 
 ### Split a File into Chunks
-
-Use the `split` command to divide a large file into smaller chunks.
 
 ```bash
 chunker-cli split <SOURCE_FILE_PATH> [--output <OUTPUT_DIRECTORY>] [--concurrent <NUM_CONCURRENT_TASKS>] [--chunk-size <CHUNK_SIZE>]
@@ -35,21 +32,19 @@ chunker-cli split <SOURCE_FILE_PATH> [--output <OUTPUT_DIRECTORY>] [--concurrent
 
 #### Options
 
-- `--output <OUTPUT_DIRECTORY>`: Directory where the chunk files will be saved. If not provided, the default is `<SOURCE_FILE_NAME>_chunks`.
-- `--concurrent <NUM_CONCURRENT_TASKS>`: Number of concurrent tasks to run. Default is `5`.
-- `--chunk-size <CHUNK_SIZE>`: Size of each chunk in bytes (in binary format). Default is `24.5MB` (25690112 bytes).
+- `--output <OUTPUT_DIRECTORY>`: Output directory for chunks (default: `<SOURCE_FILE_NAME>_chunks`)
+- `--concurrent <NUM_CONCURRENT_TASKS>`: Number of parallel tasks (default: `4`)
+- `--chunk-size <CHUNK_SIZE>`: Chunk size in bytes (default: `10MB`)
 
 #### Example
 
 ```bash
-chunker-cli split large_file.txt --output ./chunks --concurrent 5 --chunk-size 10485760
+chunker-cli split large_file.txt --output ./chunks --concurrent 4 --chunk-size 10485760
 ```
 
-This will split the `large_file.txt` into chunks of 10 MB and save them in the `./chunks` directory using 5 concurrent tasks.
+This command splits `large_file.txt` into 10MB chunks using 4 parallel tasks.
 
 ### Merge File Chunks
-
-Use the `merge` command to combine chunks back into a single file.
 
 ```bash
 chunker-cli merge <CHUNKS_DIRECTORY> <OUTPUT_FILE_PATH>
@@ -61,11 +56,17 @@ chunker-cli merge <CHUNKS_DIRECTORY> <OUTPUT_FILE_PATH>
 chunker-cli merge ./chunks merged_file.txt
 ```
 
-This will merge the chunks in the `./chunks` directory back into a single file called `merged_file.txt`.
+This command uses parallel processing to rapidly merge chunks back into `merged_file.txt`.
+
+## 🎯 Best Practices
+
+- For optimal performance, set `--concurrent` to match your CPU core count
+- Choose a chunk size that balances memory usage with performance (10MB is recommended)
+- Ensure adequate free disk space for both chunks and merged files
 
 ## 🎉 Contributing
 
-Contributions are welcome! If you'd like to improve `chunker-cli`, feel free to fork the repository and submit a pull request.
+Contributions are welcome! Feel free to fork the repository and submit pull requests.
 
 ## 📜 License
 
@@ -73,4 +74,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Enjoy splitting and merging your files with `chunker-cli`! 🚀
+Split and merge files at lightning speed with `chunker-cli`! ⚡

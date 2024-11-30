@@ -1,4 +1,4 @@
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write, BufReader, BufWriter, Seek};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -61,10 +61,6 @@ pub async fn split(
     progress: indicatif::ProgressBar,
     chunk_size: usize
 ) -> io::Result<ChunkResult> {
-    if !source_file.exists() {
-        return Err(io::Error::new(io::ErrorKind::NotFound, "Source file does not exist"));
-    }
-
     let start_time = Instant::now();
     let file = File::open(source_file)?;
     let file_size = file.metadata()?.len();
@@ -75,6 +71,25 @@ pub async fn split(
     let num_chunks = ((file_size as f64) / (chunk_size as f64)).ceil() as usize;
     progress.set_length(num_chunks as u64);
 
+    let mut chunk_files = Vec::with_capacity(num_chunks);
+    for i in 0..num_chunks {
+        let chunk_name = format!("{}_chunk{}.{}", name_base, i + 1, ext);
+        let chunk_path = output_dir.join(chunk_name);
+        let chunk_size = if i == num_chunks - 1 {
+            file_size - (i as u64 * chunk_size as u64)
+        } else {
+            chunk_size as u64
+        };
+        
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&chunk_path)?;
+        file.set_len(chunk_size)?;
+        chunk_files.push(chunk_path);
+    }
+
+    // Process chunks in parallel batches
     for i in (0..num_chunks).step_by(concurrent) {
         process_chunk_batch(
             &file,
@@ -95,18 +110,30 @@ pub async fn split(
     Ok(ChunkResult { chunks: num_chunks, time })
 }
 
-pub async fn merge(chunks: Vec<PathBuf>, output_path: &Path, progress: indicatif::ProgressBar) -> io::Result<f64> {
+pub async fn merge(
+    chunks: Vec<PathBuf>, 
+    output_path: &Path, 
+    progress: indicatif::ProgressBar
+) -> io::Result<f64> {
     let start_time = Instant::now();
-    let output_file = File::create(output_path)?;
-    let mut writer = BufWriter::new(output_file);
-
+    
+    let total_size: u64 = chunks.iter()
+        .map(|path| fs::metadata(path).map(|m| m.len()).unwrap_or(0))
+        .sum();
+    
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(output_path)?;
+    file.set_len(total_size)?;
+    
+    let mut writer = BufWriter::new(file);
     progress.set_length(chunks.len() as u64);
 
+    let buffer_size = 8388608; // 8MB
     for chunk_path in chunks {
-        let mut chunk_file = BufReader::new(File::open(chunk_path)?);
-        let mut buffer = Vec::new();
-        chunk_file.read_to_end(&mut buffer)?;
-        writer.write_all(&buffer)?;
+        let mut reader = BufReader::with_capacity(buffer_size, File::open(chunk_path)?);
+        io::copy(&mut reader, &mut writer)?;
         progress.inc(1);
     }
 

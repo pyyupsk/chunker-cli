@@ -8,7 +8,7 @@ mod chunker;
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let app = Command::new("chunker-cli")
-        .about("🚀 CLI tool for splitting and merging large files".cyan().to_string())
+        .about("🚀 A high-performance tool designed to split large files into smaller chunks and merge them back together.".cyan().to_string())
         .version("1.0.0")
         .subcommand(
             Command::new("split")
