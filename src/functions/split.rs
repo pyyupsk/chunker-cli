@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use crate::chunker;
 use crate::utils;
+use crate::utils::parse_size;
 
 pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()> {
     let source = PathBuf::from(sub_matches.get_one::<String>("source").unwrap());
@@ -14,11 +15,12 @@ pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
     let concurrent = sub_matches
         .get_one::<usize>("concurrent")
         .copied()
-        .unwrap_or(5);
-    let chunk_size = sub_matches
-        .get_one::<usize>("chunk_size")
-        .copied()
-        .unwrap_or(25690112);
+        .unwrap_or(4);
+    let chunk_size = if let Some(size_str) = sub_matches.get_one::<String>("chunk_size") {
+        parse_size(size_str)?
+    } else {
+        24 * 1024 * 1024 // 24MB default
+    };
 
     std::fs::create_dir_all(&output_dir)?;
 
@@ -29,7 +31,7 @@ pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
 
     let progress = ProgressBar::new(0).with_style(utils::progress_style());
 
-    match chunker::split(&source, &output_dir, concurrent, progress, chunk_size).await {
+    match chunker::split(&source, &output_dir, concurrent, chunk_size, progress).await {
         Ok(result) => {
             println!("\n{}\n", "\n✅ Split complete! 🎉".green().bold());
             println!("  📦 Chunks created: {}", result.chunks);

@@ -36,8 +36,8 @@ async fn main() -> std::io::Result<()> {
                     Arg::new("chunk_size")
                         .short('s')
                         .long("chunk-size")
-                        .help("Size of each chunk in bytes (e.g., 25MB = 26214400)")
-                        .value_parser(clap::value_parser!(usize)),
+                        .help("Size of each chunk (e.g., 10MB, 1GB)")
+                        .value_parser(clap::builder::NonEmptyStringValueParser::new()),
                 ),
         )
         .subcommand(
@@ -54,16 +54,23 @@ async fn main() -> std::io::Result<()> {
                         .required(true),
                 )
                 .arg(
-                    Arg::new("buffer_size")
-                        .short('b')
-                        .long("buffer-size")
-                        .help("Buffer size in bytes for reading and writing data")
+                    Arg::new("concurrent")
+                        .short('c')
+                        .long("concurrent")
+                        .help("Set the number of concurrent tasks for merging")
                         .value_parser(clap::value_parser!(usize)),
                 )
                 .arg(
+                    Arg::new("buffer_size")
+                        .short('b')
+                        .long("buffer-size")
+                        .help("Buffer size for reading and writing data (e.g., 8MB, 1GB)")
+                        .value_parser(clap::builder::NonEmptyStringValueParser::new()),
+                )
+                .arg(
                     Arg::new("cleanup")
-                        .short('c')
                         .long("cleanup")
+                        .short('C')
                         .help("Automatically delete chunks after a successful merge")
                         .action(clap::ArgAction::SetTrue),
                 ),

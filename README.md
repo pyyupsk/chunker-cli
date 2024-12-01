@@ -35,15 +35,14 @@ The compiled binary will be available at `target/release/chunker-cli`
 ### Split a File into Chunks
 
 ```bash
-chunker-cli split <SOURCE_FILE_PATH> [OPTIONS]
+chunker-cli split <source> [options]
 ```
 
 #### Options
 
-- `-o, --output <OUTPUT_DIRECTORY>`: Output directory for chunks (default: `<SOURCE_FILE_NAME>_chunks`)
-- `-c, --concurrent <NUM_CONCURRENT_TASKS>`: Number of parallel tasks (default: `4`)
-- `-s, --chunk-size <CHUNK_SIZE>`: Chunk size in bytes (default: `10MB`)
-  - Supports human-readable formats: `10MB`, `1GB`, etc.
+- `-o, --output <output>`: Specify the directory to save the chunks (default: `<SOURCE_FILE_NAME>_chunks`)
+- `-c, --concurrent <concurrent>`: Set the number of concurrent tasks for splitting (default: `4`)
+- `-s, --chunk-size <chunk_size>`: Size of each chunk (e.g., 10MB, 1GB) (default: `24MB`)
 
 #### Example
 
@@ -56,22 +55,22 @@ This command splits `large_file.txt` into 20MB chunks using 8 parallel tasks.
 ### Merge File Chunks
 
 ```bash
-chunker-cli merge <CHUNKS_DIRECTORY> <OUTPUT_FILE_PATH> [OPTIONS]
+chunker-cli merge <directory> <output> [options]
 ```
 
 #### Options
 
-- `-c, --concurrent <NUM_CONCURRENT_TASKS>`: Number of parallel tasks (default: `4`)
-- `-b, --buffer-size <BUFFER_SIZE>`: Buffer size in bytes (default: `8MB`)
-- `--cleanup`: Remove chunk files after successful merge
+- `-c, --concurrent <concurrent>`: Set the number of concurrent tasks for merging (default: `4`)
+- `-b, --buffer-size <buffer_size>`: Buffer size for reading and writing data (e.g., 8MB, 1GB)
+- `-C, --cleanup`: Automatically delete chunks after a successful merge
 
 #### Example
 
 ```bash
-chunker-cli merge ./chunks merged_file.txt -c 8 --cleanup
+chunker-cli merge ./chunks merged_file.txt -c 8 -b 10MB -C
 ```
 
-This command merges chunks from `./chunks` into `merged_file.txt` using 8 parallel tasks and removes the chunks afterward.
+This command merges chunks from `./chunks` into `merged_file.txt` using 8 parallel tasks, with a buffer size of 10MB, and removes the chunks afterward.
 
 ## 🎯 Best Practices
 

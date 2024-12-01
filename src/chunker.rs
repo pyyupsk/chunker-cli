@@ -11,56 +11,12 @@ pub struct ChunkResult {
     pub time: f64,
 }
 
-async fn process_chunk_batch(
-    file: &File,
-    file_size: u64,
-    start_chunk: usize,
-    batch_size: usize,
-    output_dir: &Path,
-    name_base: &str,
-    ext: &str,
-    progress: &ProgressBar,
-    chunk_size: usize,
-) -> io::Result<()> {
-    let mut tasks = Vec::new();
-
-    for i in 0..batch_size {
-        let chunk_index = start_chunk + i;
-        let start = chunk_index as u64 * chunk_size as u64;
-        if start >= file_size {
-            break;
-        }
-
-        let end = std::cmp::min(start + chunk_size as u64, file_size);
-        let chunk_name = format!("{}_chunk{}.{}", name_base, chunk_index + 1, ext);
-        let chunk_path = output_dir.join(chunk_name);
-
-        let mut buffer = vec![0; (end - start) as usize];
-        let mut file = file.try_clone()?;
-        file.seek(std::io::SeekFrom::Start(start))?;
-        file.read_exact(&mut buffer)?;
-
-        let progress = progress.clone();
-        tasks.push(tokio::spawn(async move {
-            fs::write(chunk_path, buffer)?;
-            progress.inc(1);
-            Ok::<_, io::Error>(())
-        }));
-    }
-
-    for task in tasks {
-        task.await.unwrap()?;
-    }
-
-    Ok(())
-}
-
 pub async fn split(
     source_file: &Path,
     output_dir: &Path,
     concurrent: usize,
-    progress: ProgressBar,
     chunk_size: usize,
+    progress: ProgressBar,
 ) -> io::Result<ChunkResult> {
     let start_time = Instant::now();
     let file = File::open(source_file)?;
@@ -91,10 +47,31 @@ pub async fn split(
     }
 
     for i in (0..num_chunks).step_by(concurrent) {
-        process_chunk_batch(
-            &file, file_size, i, concurrent, output_dir, name_base, ext, &progress, chunk_size,
-        )
-        .await?;
+        let mut tasks = Vec::new();
+
+        for j in i..std::cmp::min(i + concurrent, num_chunks) {
+            let chunk_index = j;
+            let start = chunk_index as u64 * chunk_size as u64;
+            let end = std::cmp::min(start + chunk_size as u64, file_size);
+            let chunk_name = format!("{}_chunk{}.{}", name_base, chunk_index + 1, ext);
+            let chunk_path = output_dir.join(chunk_name);
+
+            let mut buffer = vec![0; (end - start) as usize];
+            let mut file = file.try_clone().unwrap();
+            file.seek(std::io::SeekFrom::Start(start)).unwrap();
+            file.read_exact(&mut buffer).unwrap();
+
+            let progress = progress.clone();
+            tasks.push(tokio::spawn(async move {
+                fs::write(chunk_path, buffer).unwrap();
+                progress.inc(1);
+                Ok::<_, io::Error>(())
+            }));
+        }
+
+        for task in tasks {
+            task.await.unwrap().unwrap();
+        }
     }
 
     progress.finish();
@@ -109,8 +86,9 @@ pub async fn split(
 pub async fn merge(
     chunks: Vec<PathBuf>,
     output_path: &Path,
-    progress: ProgressBar,
+    concurrent: usize,
     buffer_size: usize,
+    progress: ProgressBar,
 ) -> io::Result<f64> {
     let start_time = Instant::now();
 
@@ -125,18 +103,35 @@ pub async fn merge(
         .open(output_path)?;
     file.set_len(total_size)?;
 
-    let mut writer = BufWriter::with_capacity(buffer_size, file);
     progress.set_length(chunks.len() as u64);
 
-    for chunk_path in chunks {
-        let mut reader = BufReader::with_capacity(buffer_size, File::open(chunk_path)?);
-        io::copy(&mut reader, &mut writer)?;
-        progress.inc(1);
+    for chunk_group in chunks.chunks(concurrent) {
+        let mut tasks = Vec::new();
+
+        for chunk_path in chunk_group {
+            let chunk_path = chunk_path.clone();
+            let progress = progress.clone();
+
+            tasks.push(tokio::spawn(async move {
+                let chunk_size = fs::metadata(&chunk_path)?.len();
+                let mut reader = BufReader::with_capacity(buffer_size, File::open(chunk_path)?);
+                let mut buffer = vec![0; chunk_size as usize];
+                reader.read_exact(&mut buffer)?;
+
+                progress.inc(1);
+                Ok::<_, io::Error>(buffer)
+            }));
+        }
+
+        let mut writer = BufWriter::with_capacity(buffer_size, &file);
+        for task in tasks {
+            let buffer = task.await.unwrap()?;
+            writer.write_all(&buffer)?;
+        }
+        writer.flush()?;
     }
 
-    writer.flush()?;
     progress.finish();
-
     Ok(start_time.elapsed().as_secs_f64())
 }
 
