@@ -1,8 +1,8 @@
-use clap::{Command, Arg};
+use clap::{Arg, Command};
 use colored::*;
+use std::fs;
 use std::path::PathBuf;
 use tokio;
-use std::fs;
 
 mod chunker;
 
@@ -30,10 +30,11 @@ async fn main() -> std::io::Result<()> {
 
     let matches = app.get_matches();
 
-    let progress_style = indicatif::ProgressStyle::default_bar()
-        .template("📊 {bar:40} | {percent}% | {pos}/{len} chunks")
-        .unwrap()
-        .progress_chars("█░░");
+    let progress_style = indicatif::ProgressStyle::with_template(
+        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({percent}%) {msg}"
+    )
+    .unwrap()
+    .progress_chars("#>-");
 
     match matches.subcommand() {
         Some(("split", sub_matches)) => {
@@ -53,7 +54,10 @@ async fn main() -> std::io::Result<()> {
 
             std::fs::create_dir_all(&output_dir)?;
 
-            println!("{}", format!("📂 Preparing to split {}...\n", source.display()).green());
+            println!(
+                "{}",
+                format!("📂 Preparing to split {}...\n", source.display()).green()
+            );
 
             let progress = indicatif::ProgressBar::new(0).with_style(progress_style);
 
@@ -65,7 +69,11 @@ async fn main() -> std::io::Result<()> {
                     println!("  📁 Output directory: {}\n", output_dir.display());
                 }
                 Err(e) => {
-                    eprintln!("{} {}", "❌ Error splitting file:".red().bold(), e.to_string().red());
+                    eprintln!(
+                        "{} {}",
+                        "❌ Error splitting file:".red().bold(),
+                        e.to_string().red()
+                    );
                     std::process::exit(1);
                 }
             }
@@ -76,16 +84,27 @@ async fn main() -> std::io::Result<()> {
             let buffer_size = sub_matches
                 .get_one::<usize>("buffer_size")
                 .copied()
-                .unwrap_or(8388608); // Default 8MB
+                .unwrap_or(8388608);
 
             let cleanup = sub_matches.get_flag("cleanup");
 
             let chunks = chunker::get_chunks(&dir)?;
             if chunks.is_empty() {
-                return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "No chunks found matching the pattern"));
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "No chunks found matching the pattern",
+                ));
             }
 
-            println!("{}", format!("🔗 Merging {} chunks into {}...\n", chunks.len(), output.display()).blue());
+            println!(
+                "{}",
+                format!(
+                    "🔗 Merging {} chunks into {}...\n",
+                    chunks.len(),
+                    output.display()
+                )
+                .blue()
+            );
 
             let progress = indicatif::ProgressBar::new(0).with_style(progress_style);
 
@@ -99,7 +118,11 @@ async fn main() -> std::io::Result<()> {
                     if cleanup {
                         for chunk in chunks {
                             if let Err(e) = fs::remove_file(&chunk) {
-                                eprintln!("Warning: Failed to remove chunk {}: {}", chunk.display(), e);
+                                eprintln!(
+                                    "Warning: Failed to remove chunk {}: {}",
+                                    chunk.display(),
+                                    e
+                                );
                             }
                         }
                         if let Err(e) = fs::remove_dir(&dir) {
@@ -110,7 +133,11 @@ async fn main() -> std::io::Result<()> {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{} {}", "❌ Error merging chunks:".red().bold(), e.to_string().red());
+                    eprintln!(
+                        "{} {}",
+                        "❌ Error merging chunks:".red().bold(),
+                        e.to_string().red()
+                    );
                     std::process::exit(1);
                 }
             }
