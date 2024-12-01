@@ -59,7 +59,7 @@ pub async fn split(
     output_dir: &Path,
     concurrent: usize,
     progress: indicatif::ProgressBar,
-    chunk_size: usize
+    chunk_size: usize,
 ) -> io::Result<ChunkResult> {
     let start_time = Instant::now();
     let file = File::open(source_file)?;
@@ -113,7 +113,8 @@ pub async fn split(
 pub async fn merge(
     chunks: Vec<PathBuf>, 
     output_path: &Path, 
-    progress: indicatif::ProgressBar
+    progress: indicatif::ProgressBar,
+    buffer_size: usize,
 ) -> io::Result<f64> {
     let start_time = Instant::now();
     
@@ -127,10 +128,9 @@ pub async fn merge(
         .open(output_path)?;
     file.set_len(total_size)?;
     
-    let mut writer = BufWriter::new(file);
+    let mut writer = BufWriter::with_capacity(buffer_size, file);
     progress.set_length(chunks.len() as u64);
 
-    let buffer_size = 8388608; // 8MB
     for chunk_path in chunks {
         let mut reader = BufReader::with_capacity(buffer_size, File::open(chunk_path)?);
         io::copy(&mut reader, &mut writer)?;

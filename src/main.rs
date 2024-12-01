@@ -2,6 +2,7 @@ use clap::{Command, Arg};
 use colored::*;
 use std::path::PathBuf;
 use tokio;
+use std::fs;
 
 mod chunker;
 
@@ -23,9 +24,16 @@ async fn main() -> std::io::Result<()> {
                 .about("🧩 Merge file chunks back into a single file")
                 .arg(Arg::new("directory").help("Directory containing chunk files").required(true))
                 .arg(Arg::new("output").help("Output file path").required(true))
+                .arg(Arg::new("buffer_size").short('b').long("buffer-size").help("Buffer size in bytes for reading/writing").value_parser(clap::value_parser!(usize)))
+                .arg(Arg::new("cleanup").short('c').long("cleanup").help("Delete chunks after successful merge").action(clap::ArgAction::SetTrue))
         );
 
     let matches = app.get_matches();
+
+    let progress_style = indicatif::ProgressStyle::default_bar()
+        .template("📊 {bar:40} | {percent}% | {pos}/{len} chunks")
+        .unwrap()
+        .progress_chars("█░░");
 
     match matches.subcommand() {
         Some(("split", sub_matches)) => {
@@ -47,12 +55,7 @@ async fn main() -> std::io::Result<()> {
 
             println!("{}", format!("📂 Preparing to split {}...\n", source.display()).green());
 
-            let progress = indicatif::ProgressBar::new(0).with_style(
-                indicatif::ProgressStyle::default_bar()
-                    .template("📊 {bar:40} | {percent}% | {pos}/{len} chunks")
-                    .unwrap()
-                    .progress_chars("█░░"),
-            );
+            let progress = indicatif::ProgressBar::new(0).with_style(progress_style);
 
             match chunker::split(&source, &output_dir, concurrent, progress, chunk_size).await {
                 Ok(result) => {
@@ -70,10 +73,12 @@ async fn main() -> std::io::Result<()> {
         Some(("merge", sub_matches)) => {
             let dir = PathBuf::from(sub_matches.get_one::<String>("directory").unwrap());
             let output = PathBuf::from(sub_matches.get_one::<String>("output").unwrap());
+            let buffer_size = sub_matches
+                .get_one::<usize>("buffer_size")
+                .copied()
+                .unwrap_or(8388608); // Default 8MB
 
-            if let Some(parent) = output.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
+            let cleanup = sub_matches.get_flag("cleanup");
 
             let chunks = chunker::get_chunks(&dir)?;
             if chunks.is_empty() {
@@ -82,19 +87,27 @@ async fn main() -> std::io::Result<()> {
 
             println!("{}", format!("🔗 Merging {} chunks into {}...\n", chunks.len(), output.display()).blue());
 
-            let progress = indicatif::ProgressBar::new(0).with_style(
-                indicatif::ProgressStyle::default_bar()
-                    .template("📊 {bar:40} | {percent}% | {pos}/{len} chunks")
-                    .unwrap()
-                    .progress_chars("█░░"),
-            );
+            let progress = indicatif::ProgressBar::new(0).with_style(progress_style);
 
-            match chunker::merge(chunks.clone(), &output, progress).await {
+            match chunker::merge(chunks.clone(), &output, progress, buffer_size).await {
                 Ok(time) => {
                     println!("\n{}\n", "\n✅ Merge complete! 🎉".green().bold());
                     println!("  📦 Chunks merged: {}", chunks.len());
                     println!("  ⏱️  Time taken: {}s", time.round());
                     println!("  📁 Output file: {}\n", output.display());
+
+                    if cleanup {
+                        for chunk in chunks {
+                            if let Err(e) = fs::remove_file(&chunk) {
+                                eprintln!("Warning: Failed to remove chunk {}: {}", chunk.display(), e);
+                            }
+                        }
+                        if let Err(e) = fs::remove_dir(&dir) {
+                            eprintln!("Warning: Failed to remove chunks directory: {}", e);
+                        } else {
+                            println!("🧹 Cleaned up chunks directory");
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("{} {}", "❌ Error merging chunks:".red().bold(), e.to_string().red());
