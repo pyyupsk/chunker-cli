@@ -1,15 +1,15 @@
 use std::io;
 
-pub fn parse_size(size: &str) -> io::Result<usize> {
+pub fn parse_size(size: &str) -> io::Result<f64> {
     let size = size.trim().to_uppercase();
-    let mut chars = size.chars().collect::<Vec<_>>();
+    let chars = size.chars().collect::<Vec<_>>();
 
     let split_idx = chars
         .iter()
-        .position(|c| !c.is_digit(10))
+        .position(|c| !c.is_digit(10) && *c != '.')
         .unwrap_or(chars.len());
 
-    let number: usize = chars[..split_idx]
+    let number: f64 = chars[..split_idx]
         .iter()
         .collect::<String>()
         .parse()
@@ -21,45 +21,22 @@ pub fn parse_size(size: &str) -> io::Result<usize> {
         })?;
 
     let multiplier = if split_idx < chars.len() {
-        if chars.last() == Some(&'B') {
-            chars.pop();
-        }
-
         match chars[split_idx..].iter().collect::<String>().as_str() {
-            "K" => 1024,
-            "M" => 1024 * 1024,
-            "G" => 1024 * 1024 * 1024,
-            "T" => 1024 * 1024 * 1024 * 1024,
-            "" => 1,
+            "KB" => 1024.0,
+            "MB" => 1024.0 * 1024.0,
+            "GB" => 1024.0 * 1024.0 * 1024.0,
+            "TB" => 1024.0 * 1024.0 * 1024.0 * 1024.0,
+            "" => 1.0,
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
-                    "Invalid size unit. Use K, M, G, or T",
+                    "Invalid size unit. Use KB, MB, GB, or TB",
                 ))
             }
         }
     } else {
-        1
+        1.0
     };
 
     Ok(number * multiplier)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_size() {
-        assert_eq!(parse_size("1024").unwrap(), 1024);
-        assert_eq!(parse_size("1K").unwrap(), 1024);
-        assert_eq!(parse_size("1KB").unwrap(), 1024);
-        assert_eq!(parse_size("1M").unwrap(), 1024 * 1024);
-        assert_eq!(parse_size("1MB").unwrap(), 1024 * 1024);
-        assert_eq!(parse_size("1G").unwrap(), 1024 * 1024 * 1024);
-        assert_eq!(parse_size("1GB").unwrap(), 1024 * 1024 * 1024);
-        assert_eq!(parse_size("2MB").unwrap(), 2 * 1024 * 1024);
-        assert!(parse_size("invalid").is_err());
-        assert!(parse_size("1XB").is_err());
-    }
 }

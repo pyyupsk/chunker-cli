@@ -16,7 +16,7 @@ pub async fn handle_merge(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
     let buffer_size = if let Some(size_str) = sub_matches.get_one::<String>("buffer_size") {
         parse_size(size_str)?
     } else {
-        8 * 1024 * 1024 // 8MB default
+        8.0 * 1024.0 * 1024.0 // 8MB default
     };
     let cleanup = sub_matches.get_flag("cleanup");
 

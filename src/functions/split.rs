@@ -19,7 +19,7 @@ pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
     let chunk_size = if let Some(size_str) = sub_matches.get_one::<String>("chunk_size") {
         parse_size(size_str)?
     } else {
-        24 * 1024 * 1024 // 24MB default
+        24.0 * 1024.0 * 1024.0 // 24MB default
     };
 
     std::fs::create_dir_all(&output_dir)?;

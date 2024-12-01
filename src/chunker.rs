@@ -15,7 +15,7 @@ pub async fn split(
     source_file: &Path,
     output_dir: &Path,
     concurrent: usize,
-    chunk_size: usize,
+    chunk_size: f64,
     progress: ProgressBar,
 ) -> io::Result<ChunkResult> {
     let start_time = Instant::now();
@@ -87,7 +87,7 @@ pub async fn merge(
     chunks: Vec<PathBuf>,
     output_path: &Path,
     concurrent: usize,
-    buffer_size: usize,
+    buffer_size: f64,
     progress: ProgressBar,
 ) -> io::Result<f64> {
     let start_time = Instant::now();
@@ -114,7 +114,8 @@ pub async fn merge(
 
             tasks.push(tokio::spawn(async move {
                 let chunk_size = fs::metadata(&chunk_path)?.len();
-                let mut reader = BufReader::with_capacity(buffer_size, File::open(chunk_path)?);
+                let mut reader =
+                    BufReader::with_capacity(buffer_size as usize, File::open(chunk_path)?);
                 let mut buffer = vec![0; chunk_size as usize];
                 reader.read_exact(&mut buffer)?;
 
@@ -123,7 +124,7 @@ pub async fn merge(
             }));
         }
 
-        let mut writer = BufWriter::with_capacity(buffer_size, &file);
+        let mut writer = BufWriter::with_capacity(buffer_size as usize, &file);
         for task in tasks {
             let buffer = task.await.unwrap()?;
             writer.write_all(&buffer)?;
