@@ -3,7 +3,9 @@ use std::fs;
 use std::io::Write;
 use tempfile::tempdir;
 
-use crate::chunker;
+use crate::merge_files;
+use crate::split_file;
+use crate::utils;
 
 #[tokio::test]
 async fn test_split_and_merge() -> std::io::Result<()> {
@@ -22,7 +24,7 @@ async fn test_split_and_merge() -> std::io::Result<()> {
 
     // Test split
     let progress = ProgressBar::new(0);
-    let split_result = chunker::split(
+    let split_result = split_file(
         &source_path,
         &chunks_dir,
         2,      // concurrent tasks
@@ -35,11 +37,11 @@ async fn test_split_and_merge() -> std::io::Result<()> {
     assert!(split_result.time >= 0.0);
 
     // Verify chunks were created
-    let chunks = chunker::get_chunks(&chunks_dir)?;
+    let chunks = utils::get_chunks(&chunks_dir)?;
     assert!(!chunks.is_empty());
 
     // Test merge
-    let merge_time = chunker::merge(
+    let merge_time = merge_files(
         chunks,
         &merged_path,
         2,      // concurrent tasks
@@ -67,7 +69,7 @@ fn test_get_chunks() -> std::io::Result<()> {
         fs::File::create(temp_dir.path().join(file))?;
     }
 
-    let chunks = chunker::get_chunks(temp_dir.path())?;
+    let chunks = utils::get_chunks(temp_dir.path())?;
 
     assert_eq!(chunks.len(), 3);
     // Verify correct ordering

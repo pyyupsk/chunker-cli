@@ -2,9 +2,8 @@ use colored::*;
 use indicatif::ProgressBar;
 use std::path::PathBuf;
 
-use crate::chunker;
+use crate::merge_files;
 use crate::utils;
-use crate::utils::parse_size;
 
 pub async fn handle_merge(sub_matches: &clap::ArgMatches) -> std::io::Result<()> {
     let dir = PathBuf::from(sub_matches.get_one::<String>("directory").unwrap());
@@ -14,13 +13,13 @@ pub async fn handle_merge(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
         .copied()
         .unwrap_or(4);
     let buffer_size = if let Some(size_str) = sub_matches.get_one::<String>("buffer_size") {
-        parse_size(size_str)?
+        utils::parse_size(size_str)?
     } else {
         8.0 * 1024.0 * 1024.0 // 8MB default
     };
     let cleanup = sub_matches.get_flag("cleanup");
 
-    let chunks = chunker::get_chunks(&dir)?;
+    let chunks = utils::get_chunks(&dir)?;
     if chunks.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
@@ -40,7 +39,7 @@ pub async fn handle_merge(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
 
     let progress = ProgressBar::new(0).with_style(utils::progress_style());
 
-    match chunker::merge(chunks.clone(), &output, concurrent, buffer_size, progress).await {
+    match merge_files(chunks.clone(), &output, concurrent, buffer_size, progress).await {
         Ok(time) => {
             println!("\n{}\n", "\n✅ Merge complete! 🎉".green().bold());
             println!("  📦 Chunks merged: {}", chunks.len());

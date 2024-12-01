@@ -1,6 +1,4 @@
-use std::io;
-
-pub fn parse_size(size: &str) -> io::Result<f64> {
+pub fn parse_size(size: &str) -> std::io::Result<f64> {
     let size = size.trim().to_uppercase();
     let chars = size.chars().collect::<Vec<_>>();
 
@@ -14,8 +12,8 @@ pub fn parse_size(size: &str) -> io::Result<f64> {
         .collect::<String>()
         .parse()
         .map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
                 "Invalid number in size specification",
             )
         })?;
@@ -28,8 +26,8 @@ pub fn parse_size(size: &str) -> io::Result<f64> {
             "TB" => 1024.0 * 1024.0 * 1024.0 * 1024.0,
             "" => 1.0,
             _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
                     "Invalid size unit. Use KB, MB, GB, or TB",
                 ))
             }

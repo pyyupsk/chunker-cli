@@ -1,7 +1,9 @@
-mod cleanup_chunks;
+mod cleanup;
+mod get_chunks;
 mod parse_size;
-mod progress_style;
+mod progress;
 
-pub use cleanup_chunks::cleanup_chunks;
+pub use cleanup::cleanup_chunks;
+pub use get_chunks::get_chunks;
 pub use parse_size::parse_size;
-pub use progress_style::progress_style;
+pub use progress::progress_style;

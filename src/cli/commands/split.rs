@@ -2,9 +2,8 @@ use colored::*;
 use indicatif::ProgressBar;
 use std::path::PathBuf;
 
-use crate::chunker;
+use crate::split_file;
 use crate::utils;
-use crate::utils::parse_size;
 
 pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()> {
     let source = PathBuf::from(sub_matches.get_one::<String>("source").unwrap());
@@ -17,7 +16,7 @@ pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
         .copied()
         .unwrap_or(4);
     let chunk_size = if let Some(size_str) = sub_matches.get_one::<String>("chunk_size") {
-        parse_size(size_str)?
+        utils::parse_size(size_str)?
     } else {
         24.0 * 1024.0 * 1024.0 // 24MB default
     };
@@ -31,7 +30,7 @@ pub async fn handle_split(sub_matches: &clap::ArgMatches) -> std::io::Result<()>
 
     let progress = ProgressBar::new(0).with_style(utils::progress_style());
 
-    match chunker::split(&source, &output_dir, concurrent, chunk_size, progress).await {
+    match split_file(&source, &output_dir, concurrent, chunk_size, progress).await {
         Ok(result) => {
             println!("\n{}\n", "\n✅ Split complete! 🎉".green().bold());
             println!("  📦 Chunks created: {}", result.chunks);
