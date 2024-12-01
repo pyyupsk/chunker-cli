@@ -1,3 +1,4 @@
+use indicatif::ProgressBar;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, BufWriter, Read, Seek, Write};
 use std::path::{Path, PathBuf};
@@ -18,7 +19,7 @@ async fn process_chunk_batch(
     output_dir: &Path,
     name_base: &str,
     ext: &str,
-    progress: &indicatif::ProgressBar,
+    progress: &ProgressBar,
     chunk_size: usize,
 ) -> io::Result<()> {
     let mut tasks = Vec::new();
@@ -58,7 +59,7 @@ pub async fn split(
     source_file: &Path,
     output_dir: &Path,
     concurrent: usize,
-    progress: indicatif::ProgressBar,
+    progress: ProgressBar,
     chunk_size: usize,
 ) -> io::Result<ChunkResult> {
     let start_time = Instant::now();
@@ -108,7 +109,7 @@ pub async fn split(
 pub async fn merge(
     chunks: Vec<PathBuf>,
     output_path: &Path,
-    progress: indicatif::ProgressBar,
+    progress: ProgressBar,
     buffer_size: usize,
 ) -> io::Result<f64> {
     let start_time = Instant::now();
