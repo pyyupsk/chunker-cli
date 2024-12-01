@@ -8,7 +8,7 @@ pub fn build_cli() -> Command {
                 .cyan()
                 .to_string(),
         )
-        .version("1.0.0")
+        .version(option_env!("CARGO_PKG_VERSION").unwrap_or("Unknown"))
         .subcommand(
             Command::new("split")
                 .about("🔪 Split a file into smaller chunks for easier management or transfer")
